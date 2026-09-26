@@ -1,0 +1,15 @@
+---
+title: "IBM 6500 SQL Learning Portfolio"
+number-sections: false
+---
+
+**Student:** Aldo Naranjo
+**Course:** IBM 6500
+
+This portfolio holds my DataCamp course completion evidence and learning notes for SQL and BigQuery. Each report doubles as a reference I can come back to when I need to pull, filter, or summarize data for marketing work.
+
+## Reports
+
+- [Introduction to SQL](introduction-to-sql.html)
+- Introduction to BigQuery (to be completed)
+- Intermediate SQL (to be completed)
