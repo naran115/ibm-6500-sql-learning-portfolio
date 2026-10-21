@@ -1,0 +1,389 @@
+---
+title: "Intermediate SQL: Course Completion and Learning Notes"
+subtitle: "IBM 6500"
+author: "Aldo Naranjo"
+date: today
+
+format:
+  html:
+    toc: true
+    toc-title: "Contents"
+    toc-depth: 3
+    number-sections: true
+    smooth-scroll: true
+    embed-resources: true
+    theme: cosmo
+    mainfont: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif
+    title-block-banner: "#1f3a5f"
+    title-block-banner-color: "#ffffff"
+    toc-location: right
+    toc-expand: 2
+    code-copy: true
+    highlight-style: github
+    fig-align: center
+---
+
+```{=html}
+<style>
+body, h1, h2, h3, h4, .title, .subtitle, #TOC { font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important; }
+body { font-size: 1.02rem; line-height: 1.65; }
+h1, h2, h3 { color: #1f3a5f; }
+h2 { margin-top: 2.6rem; padding-bottom: .35rem; border-bottom: 2px solid #dbe4ef; }
+h3 { margin-top: 1.9rem; }
+p strong:first-child { color: #1f3a5f; }
+figure img, .quarto-figure img { border-radius: 8px; box-shadow: 0 4px 18px rgba(0,0,0,.12); }
+table { font-size: .95rem; }
+table thead th { background: #1f3a5f; color: #fff; }
+table tbody tr:nth-child(even) { background: #f4f7fb; }
+div.sourceCode { border-radius: 6px; border: 1px solid #e3e8ef; background: #f8fafc; }
+.callout { margin: 1.2rem 0; }
+</style>
+```
+
+# Course-Completion Evidence
+
+I completed the Intermediate SQL course through the IBM 6500 DataCamp classroom on October 21, 2026. The statement of accomplishment below shows my DataCamp profile name, the course title, and the completion date.
+
+![DataCamp statement of accomplishment for Intermediate SQL](images/intermediate-sql-certificate.png){fig-alt="DataCamp statement of accomplishment awarded to aldonaranjo for completing Intermediate SQL on October 21, 2026" width="90%"}
+
+# Learning Notes and Key Takeaways
+
+The course is organized into four chapters, each split into a few lessons. I kept that structure below so I can jump straight to the lesson I need later.
+
+All examples use one made up table called `campaign_daily`. Each row is one ad campaign on one day, the way a Google Ads or Meta export usually looks. The columns are:
+
+| Column | What it holds |
+|:--|:--|
+| `campaign_name` | Name of the campaign |
+| `channel` | Where it ran, such as Google Ads, Meta, or Email |
+| `region` | Market the campaign targeted |
+| `report_date` | The day the row covers |
+| `impressions` | Times the ad was shown |
+| `clicks` | Clicks on the ad |
+| `cost` | Money spent that day |
+| `conversions` | Leads or purchases tracked from the ad (sometimes missing) |
+
+## Data Aggregation
+
+This chapter is about collapsing many rows into a few summary numbers, first for the whole table and then broken out by category.
+
+### Summary Values
+
+**Main ideas.** Aggregate functions take a whole column and return one number. Instead of scrolling through thousands of daily rows, I can ask for the total, the average, the smallest or largest value, or how many rows there are. `COUNT(*)` counts every row, while `COUNT(column)` only counts rows where that column is not empty, which is an easy way to see how much data is missing.
+
+**Important SQL syntax.**
+
+| Function | What it returns |
+|:--|:--|
+| `COUNT(*)` | Number of rows |
+| `COUNT(column)` | Number of rows where the column has a value |
+| `SUM(column)` | Total of the column |
+| `AVG(column)` | Average of the column (empty values are skipped) |
+| `MIN(column)` / `MAX(column)` | Smallest and largest value |
+| `ROUND(value, n)` | Rounds a result to n decimal places |
+
+::: {.callout-tip appearance="simple"}
+## When to use it
+Any time the question is about the whole data set at once: total spend for the month, average daily clicks, or how many days of data I actually have.
+:::
+
+**SQL example.**
+
+```sql
+SELECT COUNT(*)                AS days_of_data,
+       SUM(cost)               AS total_cost,
+       ROUND(AVG(clicks), 1)   AS avg_daily_clicks,
+       MAX(conversions)        AS best_day_conversions
+FROM campaign_daily;
+```
+
+**Explanation.** This returns a single row with four numbers: how many rows are in the table, total spend across every campaign and day, the average clicks per row rounded to one decimal, and the highest number of conversions recorded on any single day. Aliasing each result with `AS` gives the columns readable names.
+
+### One Grouping Column
+
+**Main ideas.** `GROUP BY` splits the table into groups that share the same value in a column, then runs the aggregate functions separately for each group. The result has one row per group instead of one row overall. Every column in the `SELECT` either has to be in the `GROUP BY` or wrapped in an aggregate function, because SQL needs to know how to turn many rows into one.
+
+**Important SQL syntax.** `GROUP BY column`, usually paired with `ORDER BY` to sort the groups (`DESC` for largest first).
+
+::: {.callout-tip appearance="simple"}
+## When to use it
+Comparing a metric across categories: spend by channel, conversions by region, clicks by campaign.
+:::
+
+**SQL example.**
+
+```sql
+SELECT channel,
+       SUM(cost)        AS total_cost,
+       SUM(conversions) AS total_conversions
+FROM campaign_daily
+GROUP BY channel
+ORDER BY total_cost DESC;
+```
+
+**Explanation.** The query groups all rows by `channel`, then adds up cost and conversions inside each group. The result has one row per channel (for example, Google Ads, Meta, Email), sorted so the channel with the highest spend is on top.
+
+### Multiple Grouping Columns
+
+**Main ideas.** Listing more than one column in `GROUP BY` creates a group for every combination of those values. Grouping by channel and region, for example, gives one row for Google Ads in Los Angeles, one for Google Ads in Orange County, one for Meta in Los Angeles, and so on. This shows patterns that a single grouping would average away.
+
+**Important SQL syntax.** `GROUP BY column_1, column_2`, with `ORDER BY` on one or more columns to keep the output readable.
+
+::: {.callout-tip appearance="simple"}
+## When to use it
+When a metric might behave differently depending on two factors at once, such as a channel that performs well in one region but not another.
+:::
+
+**SQL example.**
+
+```sql
+SELECT channel,
+       region,
+       SUM(clicks) AS total_clicks
+FROM campaign_daily
+GROUP BY channel, region
+ORDER BY channel, total_clicks DESC;
+```
+
+**Explanation.** Each row of the result is one channel and region pair with its total clicks. Sorting by channel first and then clicks keeps each channel's regions together, with the strongest region at the top of each block.
+
+### Marketing and CEP Application
+
+::: {.callout-note appearance="simple" icon=false title="How I would use this"}
+Aggregation is most of what monthly reporting is. Totals and averages by channel, campaign, or region are the numbers clients and stakeholders ask for first, and grouping by two columns is how I would spot something like a campaign that does well in one market and poorly in another. The same pattern works on survey data, such as average satisfaction score grouped by respondent type.
+:::
+
+## Data Transformation
+
+This chapter is about building new columns out of existing ones, so the output contains metrics the raw data does not have.
+
+### Basic Transformations
+
+**Main ideas.** A `SELECT` can do math on columns, not just return them. Dividing one column by another creates a ratio, and the new column can be named with `AS`. Two details matter: dividing whole numbers can drop the decimals in some databases, so multiplying by `1.0` keeps them, and dividing by zero causes an error, so it helps to guard against it.
+
+**Important SQL syntax.** Arithmetic operators `+ - * /`, `AS` for naming the new column, `ROUND()` for clean output, and `NULLIF(column, 0)` to turn a zero into an empty value so the division does not fail.
+
+::: {.callout-tip appearance="simple"}
+## When to use it
+Creating rates and efficiency metrics that are not stored directly, such as click through rate or cost per click.
+:::
+
+**SQL example.**
+
+```sql
+SELECT campaign_name,
+       report_date,
+       ROUND(clicks * 1.0 / NULLIF(impressions, 0), 4) AS ctr,
+       ROUND(cost / NULLIF(clicks, 0), 2)              AS cost_per_click
+FROM campaign_daily;
+```
+
+**Explanation.** For every row, the query divides clicks by impressions to get click through rate and divides cost by clicks to get cost per click. `NULLIF` returns an empty value when the denominator is zero, so days with no impressions or clicks show a blank instead of breaking the query.
+
+### Complex Transformations
+
+**Main ideas.** Some metrics need more than one step. Percent of total is the classic example: first I need each group's total, then the overall total, and only then can I divide one by the other. Writing the first step as its own named result keeps the logic readable and lets each step be checked on its own.
+
+**Important SQL syntax.** `WITH name AS (...)` to define an intermediate result (a common table expression), then a second `SELECT` that uses it. Totals across all rows can come from `SUM(...) OVER ()`, which adds up a column without collapsing the rows.
+
+::: {.callout-tip appearance="simple"}
+## When to use it
+Shares and mixes (what percent of spend went to each channel), and any metric built on top of another calculated metric.
+:::
+
+**SQL example.**
+
+```sql
+WITH channel_totals AS (
+    SELECT channel,
+           SUM(cost) AS channel_cost
+    FROM campaign_daily
+    GROUP BY channel
+)
+SELECT channel,
+       channel_cost,
+       ROUND(100.0 * channel_cost / SUM(channel_cost) OVER (), 1) AS pct_of_total_cost
+FROM channel_totals
+ORDER BY pct_of_total_cost DESC;
+```
+
+**Explanation.** Step one (`channel_totals`) adds up spend for each channel. Step two takes those totals, divides each one by the sum of all of them, and multiplies by 100. The result lists every channel with its spend and its share of the total budget, and the percentages add up to 100.
+
+### Marketing and CEP Application
+
+::: {.callout-note appearance="simple" icon=false title="How I would use this"}
+Most of the numbers I report are ratios: CTR, cost per click, cost per lead, conversion rate. Platforms calculate some of these, but once data from several sources is combined (like in BigQuery), I have to build them myself. Percent of total is how budget mix and channel share questions get answered.
+:::
+
+## Data Filtering
+
+This chapter is about keeping only the rows that matter before summarizing or reporting them.
+
+### Basic Filtering
+
+**Main ideas.** `WHERE` keeps only the rows that meet a condition. Conditions compare a column to a value (`=`, `<>`, `>`, `<`, `>=`, `<=`). Missing values need special handling: `= NULL` never works, so the check has to be `IS NULL` or `IS NOT NULL`. `LIKE` matches text patterns, where `%` stands for any run of characters.
+
+**Important SQL syntax.** `WHERE`, comparison operators, `IS NULL`, `IS NOT NULL`, `LIKE '%text%'`.
+
+::: {.callout-tip appearance="simple"}
+## When to use it
+Narrowing the data to one campaign, one date range, rows with missing tracking, or names that follow a naming convention.
+:::
+
+**SQL example.**
+
+```sql
+SELECT campaign_name, report_date, clicks
+FROM campaign_daily
+WHERE campaign_name LIKE '%Brand%'
+  AND conversions IS NULL;
+```
+
+**Explanation.** This returns every row for a campaign with "Brand" anywhere in its name where the conversion count is missing. It is a quick way to find days where conversion tracking may not have fired.
+
+### Multiple Conditions
+
+**Main ideas.** `AND` requires every condition to be true, while `OR` requires at least one. When both appear in the same filter, parentheses decide which conditions are grouped together, and leaving them out can return a very different set of rows. `IN` is a shorter way to write several `OR` checks on the same column.
+
+**Important SQL syntax.** `AND`, `OR`, parentheses, `IN (...)`, and `BETWEEN low AND high` for ranges.
+
+::: {.callout-tip appearance="simple"}
+## When to use it
+Questions with more than one requirement, like "paid social or search, in Orange County, during September."
+:::
+
+**SQL example.**
+
+```sql
+SELECT campaign_name, channel, region, cost
+FROM campaign_daily
+WHERE channel IN ('Google Ads', 'Meta')
+  AND (region = 'Orange County' OR cost > 500);
+```
+
+**Explanation.** The query keeps rows from Google Ads or Meta only, and then only if the row is in Orange County or spent more than 500 that day. Without the parentheses, SQL would read it as "Google Ads or Meta in Orange County, or any row over 500," which would let other channels slip in.
+
+### Complex Filtering
+
+**Main ideas.** When a filter gets long, it is easier to turn each condition into its own true or false column first, look at those columns to confirm they are right, and then filter on them. This makes the logic visible instead of buried in one long `WHERE`. `NOT` flips a condition, which is useful for pulling the rows a filter excluded so they can be checked too.
+
+**Important SQL syntax.** Conditions written as columns in a `SELECT` (they return true or false), a subquery or `WITH` step to hold them, then `WHERE flag` or `WHERE NOT flag`.
+
+::: {.callout-tip appearance="simple"}
+## When to use it
+Multi-rule definitions that need to be checked and explained, like what counts as an underperforming campaign day.
+:::
+
+**SQL example.**
+
+```sql
+WITH flagged AS (
+    SELECT campaign_name,
+           report_date,
+           cost,
+           conversions,
+           cost > 200         AS high_spend,
+           conversions = 0    AS no_conversions
+    FROM campaign_daily
+)
+SELECT campaign_name, report_date, cost
+FROM flagged
+WHERE high_spend AND no_conversions;
+```
+
+**Explanation.** The first step adds two true or false columns to every row. The final query keeps only the days that spent over 200 and produced zero conversions. Changing the last line to `WHERE NOT (high_spend AND no_conversions)` would return every other row, which is a good way to confirm nothing was dropped by mistake.
+
+### Marketing and CEP Application
+
+::: {.callout-note appearance="simple" icon=false title="How I would use this"}
+Filtering is how I would isolate the exact slice a question is about: one client, one date range, one channel. Checking for `NULL` conversions helps catch tracking problems before they skew a report, and the flag column approach is useful for any rule I need to explain to someone else, like how "wasted spend" was defined.
+:::
+
+## Conditional Operations
+
+This chapter is about applying different logic to different rows, both when creating columns and when summarizing.
+
+### Conditional Transformation
+
+**Main ideas.** `CASE WHEN` works like an if statement inside a query. It checks conditions in order and returns the value for the first one that is true, with `ELSE` covering everything else. It can clean up inconsistent labels (standardizing values) or sort rows into categories (classifying).
+
+**Important SQL syntax.**
+
+```sql
+CASE
+    WHEN condition_1 THEN value_1
+    WHEN condition_2 THEN value_2
+    ELSE fallback_value
+END AS new_column
+```
+
+::: {.callout-tip appearance="simple"}
+## When to use it
+Bucketing numbers into tiers, labeling performance, or fixing messy text like "google", "Google Ads", and "GoogleAds" into one label.
+:::
+
+**SQL example.**
+
+```sql
+SELECT campaign_name,
+       report_date,
+       cost,
+       CASE
+           WHEN cost >= 500 THEN 'High spend'
+           WHEN cost >= 100 THEN 'Medium spend'
+           ELSE 'Low spend'
+       END AS spend_tier
+FROM campaign_daily;
+```
+
+**Explanation.** Every row gets a `spend_tier` label. Rows at 500 or more are "High spend," rows from 100 up to 500 are "Medium spend," and everything below is "Low spend." Because `CASE` stops at the first true condition, the order of the `WHEN` lines matters.
+
+### Conditional Aggregation
+
+**Main ideas.** Putting a `CASE` inside an aggregate function lets one query calculate several filtered summaries side by side. The `CASE` returns the value only for rows that meet the condition and leaves the rest empty, and functions like `SUM`, `AVG`, and `COUNT` skip empty values. This is how to get something like "average cost on weekend days only" for each campaign without running separate queries.
+
+**Important SQL syntax.** `SUM(CASE WHEN ... THEN column END)`, `AVG(CASE WHEN ... THEN column END)`, and `COUNT(CASE WHEN ... THEN 1 END)`, usually with `GROUP BY`.
+
+::: {.callout-tip appearance="simple"}
+## When to use it
+Comparing a subset with the whole inside the same table: converting days versus all days, one region versus all regions, paid versus organic.
+:::
+
+**SQL example.**
+
+```sql
+SELECT channel,
+       COUNT(*)                                          AS total_days,
+       COUNT(CASE WHEN conversions > 0 THEN 1 END)       AS converting_days,
+       ROUND(AVG(CASE WHEN conversions > 0 THEN cost END), 2) AS avg_cost_on_converting_days
+FROM campaign_daily
+GROUP BY channel;
+```
+
+**Explanation.** For each channel, the query counts all days, counts only the days with at least one conversion, and averages cost across only those converting days. Rows that do not meet the condition return nothing inside the `CASE`, so they are left out of the count and the average.
+
+### Marketing and CEP Application
+
+::: {.callout-note appearance="simple" icon=false title="How I would use this"}
+`CASE` is how raw data turns into labels people understand, like spend tiers, lead quality buckets, or new versus returning customers. Conditional aggregation is useful for side by side comparisons in one table, such as conversion counts for mobile versus desktop or survey scores for current students versus prospects, all grouped by the same category.
+:::
+
+# Overall Reflection and Series Synthesis
+
+The most useful patterns from this course were `GROUP BY` and conditional aggregation. Grouping is what turns a long list of rows into something I can actually report, and putting `CASE` inside `SUM` or `COUNT` means I can build a comparison table in one query instead of several.
+
+The hardest part was multi-step logic, especially percent of total and the complex filtering lessons, where the query depends on results calculated earlier in the same query. What helped was breaking it into steps and running each piece on its own first, checking that the intermediate numbers looked right before adding the final calculation.
+
+Introduction to SQL covered how to pull columns out of a table. This course built on that by working with the rows: summarizing them, filtering them, and creating new values from them. Together they cover most of what a basic reporting query needs.
+
+In BigQuery, these are the same patterns I would use on GA4 exports or combined ad platform data. Grouping events by source or campaign, calculating rates, filtering to a date range, and using `CASE` to label traffic would all work there with standard SQL.
+
+For digital marketing analytics, this is the toolkit for building metrics like CTR, cost per lead, and channel share straight from the source data, and for spotting tracking gaps with `NULL` checks. The same patterns apply to survey and customer data, like comparing averages across respondent groups.
+
+The sections I expect to come back to most are the percent of total example, the conditional aggregation pattern, and the `AND`/`OR` parentheses note in Multiple Conditions, since those are the easiest to get subtly wrong.
+
+# Appendix: Publication Links {.unnumbered}
+
+- [GitHub Repository](https://github.com/naran115/ibm-6500-sql-learning-portfolio)
+- [Published Intermediate SQL Report](https://naran115.github.io/ibm-6500-sql-learning-portfolio/intermediate-sql.html)
+- [Published Portfolio Landing Page](https://naran115.github.io/ibm-6500-sql-learning-portfolio/index.html)
